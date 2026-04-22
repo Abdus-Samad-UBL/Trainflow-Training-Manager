@@ -655,31 +655,69 @@
         
         .hidden { display: none !important; }
         
-        .section-header {
-            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-            padding: 20px 30px;
-            border-radius: 12px;
-            margin: 30px 0 20px 0;
-            border-left: 6px solid #3b82f6;
+        .section-divider {
+            margin: 40px 0 25px 0;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
         
-        .section-header h2 {
-            color: #1e40af;
-            font-size: 22px;
+        .section-divider h2 {
+            color: #1f2937;
+            font-size: 20px;
             font-weight: 700;
             margin: 0;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
         
-        .section-header .badge {
+        .section-divider .count-badge {
             background: #3b82f6;
             color: white;
             padding: 4px 12px;
-            border-radius: 20px;
+            border-radius: 16px;
             font-size: 13px;
             font-weight: 600;
+        }
+        
+        /* Location-based card colors */
+        .training-card.location-karachi {
+            border-left: 6px solid #3b82f6;
+        }
+        
+        .training-card.location-karachi:hover {
+            box-shadow: 0 12px 24px rgba(59, 130, 246, 0.2);
+            border-color: #2563eb;
+        }
+        
+        .training-card.location-islamabad {
+            border-left: 6px solid #10b981;
+        }
+        
+        .training-card.location-islamabad:hover {
+            box-shadow: 0 12px 24px rgba(16, 185, 129, 0.2);
+            border-color: #059669;
+        }
+        
+        .training-card.location-lahore {
+            border-left: 6px solid #f59e0b;
+        }
+        
+        .training-card.location-lahore:hover {
+            box-shadow: 0 12px 24px rgba(245, 158, 11, 0.2);
+            border-color: #d97706;
+        }
+        
+        .training-card.location-other {
+            border-left: 6px solid #8b5cf6;
+        }
+        
+        .training-card.location-other:hover {
+            box-shadow: 0 12px 24px rgba(139, 92, 246, 0.2);
+            border-color: #7c3aed;
         }
         
         .empty-state {
@@ -1430,13 +1468,13 @@ const app = {
         const ongoingTrainings = sortedTrainings.filter(training => {
             const endDate = new Date(training.endDate);
             endDate.setHours(0, 0, 0, 0);
-            return endDate >= today; // End date is today or in future
+            return endDate >= today;
         });
         
         const completedTrainings = sortedTrainings.filter(training => {
             const endDate = new Date(training.endDate);
             endDate.setHours(0, 0, 0, 0);
-            return endDate < today; // End date is in past
+            return endDate < today;
         });
 
         let html = '';
@@ -1444,11 +1482,9 @@ const app = {
         // Ongoing Trainings Section
         if (ongoingTrainings.length > 0) {
             html += `
-                <div class="section-header">
-                    <h2>
-                        <span>🔴 Live & Upcoming Trainings</span>
-                        <span class="badge">${ongoingTrainings.length}</span>
-                    </h2>
+                <div class="section-divider">
+                    <h2>🔴 Live & Upcoming Trainings</h2>
+                    <span class="count-badge">${ongoingTrainings.length}</span>
                 </div>
                 <div class="training-list">
                     ${this.renderTrainingCards(ongoingTrainings, false)}
@@ -1459,11 +1495,9 @@ const app = {
         // Completed Trainings Section
         if (completedTrainings.length > 0) {
             html += `
-                <div class="section-header" style="margin-top: 50px;">
-                    <h2>
-                        <span>✅ Completed & Past Trainings</span>
-                        <span class="badge">${completedTrainings.length}</span>
-                    </h2>
+                <div class="section-divider">
+                    <h2>✅ Completed & Past Trainings</h2>
+                    <span class="count-badge">${completedTrainings.length}</span>
                 </div>
                 <div class="training-list">
                     ${this.renderTrainingCards(completedTrainings, true)}
@@ -1472,6 +1506,13 @@ const app = {
         }
 
         container.innerHTML = html;
+    },
+    
+    getLocationClass(venue) {
+        if (venue.includes('Karachi')) return 'location-karachi';
+        if (venue.includes('Islamabad')) return 'location-islamabad';
+        if (venue.includes('Lahore')) return 'location-lahore';
+        return 'location-other';
     },
     
     renderTrainingCards(trainings, isCompleted) {
@@ -1489,14 +1530,11 @@ const app = {
                 'allSections': 'All Sections Active'
             };
             
-            // Check if single-day training
             const isSingleDay = training.startDate === training.endDate;
-            
-            // Apply faded style if completed OR if it's a past training
             const shouldFade = progress === 100 || isCompleted;
             const cardStyle = shouldFade ? 'opacity: 0.6; filter: grayscale(20%);' : '';
             
-            // Live indicator for ongoing trainings
+            // Live indicator
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const start = new Date(training.startDate);
@@ -1507,8 +1545,11 @@ const app = {
             const isLiveNow = today >= start && today <= end;
             const liveIndicator = isLiveNow && !isCompleted ? '<span style="background: #ef4444; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-left: 10px;">🔴 LIVE</span>' : '';
             
+            // Get location-based class for color coding
+            const locationClass = this.getLocationClass(training.venue);
+            
             return `
-                <div class="training-card" onclick="app.showChecklist(${training.id})" style="${cardStyle}">
+                <div class="training-card ${locationClass}" onclick="app.showChecklist(${training.id})" style="${cardStyle}">
                     <h3>${training.title} ${progress === 100 ? '✅' : ''} ${liveIndicator}</h3>
                     <p style="color: #2563eb; font-weight: 700; font-size: 16px; margin-bottom: 10px;">📋 ID: ${training.trainingId || 'N/A'}</p>
                     ${isSingleDay ? 
