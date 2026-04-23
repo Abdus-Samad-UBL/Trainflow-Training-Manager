@@ -1021,15 +1021,14 @@ const app = {
         return date.toLocaleString('en-US', options) + ' PKT';
     },
 
-    async loadTrainings() {
+    loadTrainings() {
         this.showLoading();
-        try {
-            console.log('Loading trainings from:', this.sheetsUrl);
-            const response = await fetch(this.sheetsUrl);
-            if (response.ok) {
-                const text = await response.text();
-                console.log('Raw response:', text);
-                this.trainings = JSON.parse(text);
+        
+        // Use JSONP to bypass CORS
+        window.handleTrainingData = (data) => {
+            try {
+                console.log('Received training data:', data);
+                this.trainings = data;
                 
                 this.trainings.forEach(training => {
                     Object.keys(training.checklist).forEach(sectionKey => {
@@ -1095,41 +1094,62 @@ const app = {
                 });
                 
                 console.log('Loaded trainings:', this.trainings);
+                this.hideLoading();
+                this.showDashboard();
+            } catch (error) {
+                console.error('Load error:', error);
+                alert('Error loading data. Check console (F12) for details.');
+                this.hideLoading();
+                this.showDashboard();
             }
-        } catch (error) {
-            console.error('Load error:', error);
-            alert('Error loading data. Check console (F12) for details.');
-        }
-        this.hideLoading();
-        this.showDashboard();
+        };
+        
+        // Create script tag for JSONP
+        const script = document.createElement('script');
+        script.src = this.sheetsUrl + '?callback=handleTrainingData&_=' + Date.now();
+        script.onerror = () => {
+            console.error('Failed to load training data');
+            alert('Error loading data from Google Sheets.');
+            this.hideLoading();
+            this.showDashboard();
+        };
+        document.head.appendChild(script);
     },
 
-    async saveToSheets() {
+    saveToSheets() {
         this.showLoading();
-        try {
-            console.log('Saving trainings:', this.trainings);
-            const formData = new FormData();
-            formData.append('data', JSON.stringify(this.trainings));
-            const response = await fetch(this.sheetsUrl, {
-                method: 'POST',
-                body: formData
-            });
-            if (response.ok) {
-                const result = await response.text();
+        
+        // Use JSONP to bypass CORS for saving
+        window.handleSaveResponse = (result) => {
+            try {
                 console.log('Save response:', result);
                 this.hideLoading();
-                return true;
-            } else {
-                console.error('Save failed with status:', response.status);
-                const errorText = await response.text();
-                console.error('Error response:', errorText);
+                if (result.success) {
+                    alert('✅ Data saved successfully to Google Sheets!');
+                } else {
+                    alert('⚠️ Save completed but check the response.');
+                }
+            } catch (error) {
+                console.error('Save response error:', error);
+                this.hideLoading();
             }
-        } catch (error) {
-            console.error('Save error:', error);
-            alert('Error saving data. Check console (F12) for details.');
-        }
-        this.hideLoading();
-        return false;
+        };
+        
+        // Create form and submit via JSONP
+        const data = JSON.stringify(this.trainings);
+        const callbackName = 'handleSaveResponse';
+        const url = this.sheetsUrl + '?callback=' + callbackName + '&data=' + encodeURIComponent(data) + '&_=' + Date.now();
+        
+        const script = document.createElement('script');
+        script.src = url;
+        script.onerror = () => {
+            console.error('Failed to save data');
+            alert('❌ Error saving data to Google Sheets.');
+            this.hideLoading();
+        };
+        document.head.appendChild(script);
+        
+        return true;
     },
 
     showDashboard() {
