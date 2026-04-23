@@ -1119,35 +1119,63 @@ const app = {
     saveToSheets() {
         this.showLoading();
         
-        // Use JSONP to bypass CORS for saving
-        window.handleSaveResponse = (result) => {
-            try {
-                console.log('Save response:', result);
-                this.hideLoading();
-                if (result.success) {
-                    alert('✅ Data saved successfully to Google Sheets!');
-                } else {
-                    alert('⚠️ Save completed but check the response.');
-                }
-            } catch (error) {
-                console.error('Save response error:', error);
-                this.hideLoading();
-            }
-        };
+        console.log('Saving trainings:', this.trainings);
         
-        // Create form and submit via JSONP
-        const data = JSON.stringify(this.trainings);
-        const callbackName = 'handleSaveResponse';
-        const url = this.sheetsUrl + '?callback=' + callbackName + '&data=' + encodeURIComponent(data) + '&_=' + Date.now();
+        // Create a hidden iframe to handle the response
+        let iframe = document.getElementById('save-iframe');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'save-iframe';
+            iframe.name = 'save-iframe';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+        }
         
-        const script = document.createElement('script');
-        script.src = url;
-        script.onerror = () => {
-            console.error('Failed to save data');
-            alert('❌ Error saving data to Google Sheets.');
+        // Create a form to POST data
+        let form = document.getElementById('save-form');
+        if (form) {
+            form.remove();
+        }
+        
+        form = document.createElement('form');
+        form.id = 'save-form';
+        form.method = 'POST';
+        form.action = this.sheetsUrl;
+        form.target = 'save-iframe';
+        form.style.display = 'none';
+        
+        // Add data as form field
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'data';
+        input.value = JSON.stringify(this.trainings);
+        form.appendChild(input);
+        
+        document.body.appendChild(form);
+        
+        // Handle iframe load event
+        iframe.onload = () => {
+            console.log('Save completed');
             this.hideLoading();
+            alert('✅ Data saved successfully to Google Sheets!');
+            
+            // Clean up
+            setTimeout(() => {
+                if (form && form.parentNode) {
+                    form.remove();
+                }
+            }, 1000);
         };
-        document.head.appendChild(script);
+        
+        // Handle errors
+        iframe.onerror = () => {
+            console.error('Save failed');
+            this.hideLoading();
+            alert('❌ Error saving data. Please try again.');
+        };
+        
+        // Submit the form
+        form.submit();
         
         return true;
     },
